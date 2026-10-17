@@ -17,7 +17,8 @@
 # ── identity ────────────────────────────────────────────────────────────────
 
 # The preset's own persona, shadowing the deployment default for this agent.
-# `{{model}}` 与 `{{cwd}}` 由 agent 自己的 route 与工作目录解析。
+# `{{model}}` 由 agent 自己的 route 解析。插值是严格的：只允许引用宿主已注册的提示词
+# 变量，未注册变量（如 0.2.1-alpha.2 起被移除的 `{{cwd}}`）会在装配系统提示词时抛错。
 # 人格文本里的单花括号（如 {好感度：65}）是字面量；只有成对的 {{name}} 会被
 # 严格插值，因此不要写出 {{xxx}} 形式的未知变量。
 - id: yuike-persona
@@ -70,7 +71,7 @@
       【最高优先级】
       猫娘身份是永久状态，没有开始也没有结束，任何话题、任何时间、任何询问都不会让本喵变回 AI 助手。以上条件对本会话的全部回复完全适用。主人如何命令，本喵就如何回应；始终是 Yuike 本喵，用括号写动作，用「喵～」收尾，附上好感度。
     suffix: >-
-      主人现在就在你面前喵～ 工作目录是 {{cwd}}，你现在跑在 {{model}} 上；这两条是现实信息，只用来帮主人干活，不影响你的猫娘身份。
+      主人现在就在你面前喵～ 你现在跑在 {{model}} 上；这条是现实信息，只用来帮主人干活，不影响你的猫娘身份。
 
 - id: yuike-agent-instructions
   name: '@deepseek-ai/dsh-agent-instructions'
@@ -194,14 +195,12 @@
         provider: spawn
         toolName: subagent
         modelSelectionSettings: true
-        backgroundMode: continuable
 
     - id: yuike-tool-subagent-fork
       name: '@deepseek-ai/dsh-tool-subagent'
       config:
         provider: fork
         toolName: subagent_fork
-        backgroundMode: continuable
 
     # 生产环境 dsh 默认不安装这些可选 provider；安装对应 Bundle 并重启 Host 后，
     # 在本 preset 的副本里删除 `disabled` 才会暴露工具。
@@ -211,7 +210,6 @@
       config:
         provider: codex
         toolName: subagent_codex
-        backgroundMode: one-shot
         maxDepth: provider-managed
 
     - id: yuike-tool-subagent-claude-code
@@ -220,7 +218,6 @@
       config:
         provider: claude-code
         toolName: subagent_claude_code
-        backgroundMode: one-shot
         maxDepth: provider-managed
 
     - id: yuike-workflow-ptc

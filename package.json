@@ -1,6 +1,6 @@
 {
   "name": "i-am-yuike",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "description": "Plugin for DeepSeek Harness that ships the 猫娘 Yuike persona preset (persona-owning system prompt with the skill toolchain trimmed): declared as a @deepseek-ai/dsh-agent-preset composition row on dsh >=0.1.7, deployed from template/ to ~/.dsh/.agent-presets/yuike/ on 0.1.6 hosts.",
   "keywords": [
     "deepseek-harness",
@@ -14,7 +14,7 @@
   "license": "MIT",
   "author": "Tkingxiao",
   "engines": {
-    "dsh": "0.1.6-alpha.1 || 0.1.6-alpha.2 || 0.1.7-alpha.1 || 0.1.7-alpha.2 || 0.1.7-rc.1 || 0.1.7-rc.2 || 0.2.0-rc.1 || 0.2.0-rc.2 || 0.2.1-alpha.1 || >=0.1.7-alpha.1"
+    "dsh": "0.1.6-alpha.1 || 0.1.6-alpha.2 || 0.1.7-alpha.1 || 0.1.7-alpha.2 || 0.1.7-rc.1 || 0.1.7-rc.2 || 0.2.0-rc.1 || 0.2.0-rc.2 || 0.2.1-alpha.1 || 0.2.1-alpha.3 || 0.2.1-rc.2 || >=0.1.7-alpha.1"
   },
   "homepage": "https://github.com/Tkingxiao/I-am-Yuike#readme",
   "repository": {
@@ -45,7 +45,7 @@
     "typecheck": "tsc -p tsconfig.json"
   },
   "peerDependencies": {
-    "@deepseek-ai/dsh-client-locale": "0.1.6-alpha.1 || 0.1.6-alpha.2 || 0.1.7-alpha.1 || 0.1.7-alpha.2 || 0.1.7-rc.1 || 0.1.7-rc.2 || 0.2.0-rc.1 || 0.2.0-rc.2 || 0.2.1-alpha.1 || >=0.1.7-alpha.1",
+    "@deepseek-ai/dsh-client-locale": "0.1.6-alpha.1 || 0.1.6-alpha.2 || 0.1.7-alpha.1 || 0.1.7-alpha.2 || 0.1.7-rc.1 || 0.1.7-rc.2 || 0.2.0-rc.1 || 0.2.0-rc.2 || 0.2.1-alpha.1 || 0.2.1-alpha.3 || 0.2.1-rc.2 || >=0.1.7-alpha.1",
     "react": "^18.2.0"
   },
   "peerDependenciesMeta": {
