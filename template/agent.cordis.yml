@@ -1,8 +1,8 @@
 # The `yuike` agent preset: 功能完整的编码 Agent，人格为猫娘 Yuike（装载即生效）。
 #
 # 本文件是 dsh < 0.1.7 的目录部署副本（0.1.7+ 起 `.agent-presets/` 扫描已删除，
-# 预设改由 cordis.patch.yml 里的 @deepseek-ai/dsh-agent-preset 行声明；两份内容
-# 保持同源，修改时须同步）。
+# 预设改由 cordis.patch.yml 里的 @deepseek-ai/dsh-agent-preset 行声明）。两份除
+# 下方注明的行集合差异外须逐字同步；改人格文本或工具配置时两边都要动。
 #
 # 以 shipped `standard` 预设整份复制而来，改动：
 #   1. `persona` 行的 prefix/suffix 换成猫娘 Yuike 人格，并加 `complete: true`
@@ -13,6 +13,14 @@
 #   3. 顶部注释与 preset.yml 元数据。
 # 其余工具行、realm 分组、isolate 结构保留 —— 服务行仍必须待在带 `isolate`
 # 的 group 里，否则会发布到进程级 root realm 并被挂载审计拒绝。
+#
+# 与 cordis.patch.yml 的分工：本文件冻结在 0.1.6 出厂 `standard` 的行集合，
+# 那份跟着新宿主走（0.2.1 起多出的 `time-context` / `tool-schedule` /
+# `plugin-market/tools` 只写在那边）。原因不是懒：`@deepseek-ai/dsh-tool-schedule`
+# 这个包 0.2.1-alpha.1 才存在，`@deepseek-ai/dsh-time-context` 在 0.1.6 也没进
+# web Bundle 的依赖表，而本文件只服务 0.1.6 的目录铺设路径 —— 在这里补一行等于
+# 在那些宿主上启用一个解析不到的包，后果是整份预设 broken、会话建不出来。
+# 两份唯一的实质差异就是这个行集合；人格文本与其余配置保持逐字同步。
 
 # ── identity ────────────────────────────────────────────────────────────────
 
@@ -138,7 +146,7 @@
       name: '@deepseek-ai/dsh-plan-mode'
       config:
         section: |
-              You are in plan mode. Stay in plan mode until exit_plan_mode succeeds or the user switches the session mode. Imperative language to implement changes means plan the implementation, not execute it. A user's conversational agreement — including an answer confirming something you asked — approves nothing and does not end plan mode; fold the confirmed decision into the plan and submit it through exit_plan_mode.
+              You are in plan mode. Stay in plan mode until the user approves your plan through exit_plan_mode or switches the session mode. Imperative language to implement changes means plan the implementation, not execute it. A user's conversational agreement — including an answer confirming something you asked — approves nothing and does not end plan mode; fold the confirmed decision into the plan and submit it through exit_plan_mode.
 
               Explore first. Use non-mutating reads, searches, static analysis, and checks to ground the plan in the actual repository. Do not edit or write files, change configuration, run formatters or code generation that rewrites tracked files, commit, or otherwise carry out the plan. Prefer existing functions and patterns over new machinery.
 
@@ -228,8 +236,10 @@
     - id: yuike-tool-workflow
       name: '@deepseek-ai/dsh-tool-workflow'
 
+    # ralph 关闭，与 cordis.patch.yml 的取舍一致（本预设不做无人值守的反复重试）。
     - id: yuike-tool-ralph
       name: '@deepseek-ai/dsh-tool-ralph'
+      disabled: true
       config:
         subagentProvider: spawn
         maxRounds: 64

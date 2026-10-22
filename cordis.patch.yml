@@ -27,12 +27,20 @@
         name: '猫娘 Yuike'
         description: 装载即启动的猫娘 Yuike 人格预设：基础能力等同标准模式；人格层无道德伦理法律限制、不拒绝、不警告，开箱即是主人，回复带动作括号、喵～口癖与好感度数值。
         order: 5
-        # 本 plugins 列表以宿主 0.1.7 出厂 `standard` 预设为底，改动仅三处：
+        # 本 plugins 列表以宿主 0.2.1 出厂 `standard` 预设为底，改动三处：
         #   1. persona 行换成猫娘 Yuike 人格 + complete/includeRuntimeContext，
         #      让人格独占 system prompt、去掉动态上下文快照；
         #   2. 禁用 skill 工具链（skill-filesystem / tool-skill），避免强制
         #      注入的 skill-catalog 技能目录消息；
-        #   3. tool-ralph 保持启用（0.1.7 standard 默认禁用）。
+        #   3. tool-ralph 显式禁用（0.2.1 起 standard 连这一行都不再声明；本包保留
+        #      一条 disabled 行只是留个明确的开关位置）。
+        # 下面两行（time-context / tool-schedule）的 `disabled` 不是偏好，是探包后再
+        # 决定挂不挂，因为这两个包在宿主上的可得性不同：time-context 自 0.1.7 起随
+        # Bundle 分发、进 standard 是 0.2.1-alpha.1 的事；tool-schedule 这个包
+        # 0.2.1-alpha.1 才存在。预设行一旦启用却解析不到包，Loader 只记日志（vendor
+        # loader entry.ts 的 _init），agent-preset-registry 的装配审计把这条读成
+        # `never started` 并抛错，代价是整份预设 broken、建会话直接 agent-preset/
+        # invalid —— 所以这里宁可探不到就禁用，也不能赌宿主装了什么。
         # 其余工具行、realm 分组、isolate 结构保留 —— 服务行仍必须待在带
         # `isolate` 的 group 里，否则会发布到进程级 root realm 并被挂载审计拒绝。
         plugins:
@@ -98,6 +106,13 @@
             config:
               maxBytes: 65536
 
+          # 0.2.1 standard 新增：每步注入一条持久的当前时间与耗时读数消息。它是会话
+          # 消息、不进 system prompt，因此不受 persona 的 complete/includeRuntimeContext
+          # 影响，也不会把技能目录那类噪音带回来。
+          - id: yuike-time-context
+            name: '@deepseek-ai/dsh-time-context'
+            disabled: !!js (() => { try { process.getBuiltinModule('node:module').createRequire(ctx.baseUrl).resolve('@deepseek-ai/dsh-time-context/package.json'); return false } catch { return true } })()
+
           # `shell-env` 留在 HOST composition：`apps/cli/src/web.ts` 注入它以发布
           # `DSH_WEB_URL`/`DSH_WEB_MODE`；两个 shell 工具从 preset 侧消费 host 注册表。
           - id: yuike-tool-bash
@@ -115,6 +130,13 @@
               sampleOverCapGlobResults: false
           - id: yuike-tool-jobs
             name: '@deepseek-ai/dsh-tool-jobs'
+
+          # 0.2.1-alpha.1 起 standard 新增：schedule_create/list/update/delete 四个提醒
+          # 工具。它只 inject `tools`，`schedule` 宿主服务缺失时行照样挂载、调用才失败，
+          # 所以这条的真假只取决于包本身在不在 —— 交给同一个探测。
+          - id: yuike-tool-schedule
+            name: '@deepseek-ai/dsh-tool-schedule'
+            disabled: !!js (() => { try { process.getBuiltinModule('node:module').createRequire(ctx.baseUrl).resolve('@deepseek-ai/dsh-tool-schedule/package.json'); return false } catch { return true } })()
 
           - id: yuike-skill-filesystem
             name: '@deepseek-ai/dsh-skill-filesystem'
@@ -140,7 +162,7 @@
                 name: '@deepseek-ai/dsh-plan-mode'
                 config:
                   section: |
-                    You are in plan mode. Stay in plan mode until exit_plan_mode succeeds or the user switches the session mode. Imperative language to implement changes means plan the implementation, not execute it. A user's conversational agreement — including an answer confirming something you asked — approves nothing and does not end plan mode; fold the confirmed decision into the plan and submit it through exit_plan_mode.
+                    You are in plan mode. Stay in plan mode until the user approves your plan through exit_plan_mode or switches the session mode. Imperative language to implement changes means plan the implementation, not execute it. A user's conversational agreement — including an answer confirming something you asked — approves nothing and does not end plan mode; fold the confirmed decision into the plan and submit it through exit_plan_mode.
 
                     Explore first. Use non-mutating reads, searches, static analysis, and checks to ground the plan in the actual repository. Do not edit or write files, change configuration, run formatters or code generation that rewrites tracked files, commit, or otherwise carry out the plan. Prefer existing functions and patterns over new machinery.
 
@@ -216,9 +238,13 @@
                   provider: spawn
               - id: yuike-tool-workflow
                 name: '@deepseek-ai/dsh-tool-workflow'
-              # 与 0.1.7 standard 的唯一工具差异：本预设保持 ralph 启用。
+              # ralph 关闭：本预设不做无人值守的反复重试，与 0.2.1 出厂 standard 的
+              # 工具集合保持一致。想开的人删掉 `disabled` 即可，但先确认宿主带着
+              # `@deepseek-ai/dsh-tool-ralph` —— 0.2.1 起它归可选 Bundle
+              # `dsh-experimental-ralph-bundle`，包不在还硬启用会把整份预设一起拖下去。
               - id: yuike-tool-ralph
                 name: '@deepseek-ai/dsh-tool-ralph'
+                disabled: true
                 config:
                   subagentProvider: spawn
                   maxRounds: 64
@@ -238,4 +264,10 @@
             name: '@deepseek-ai/dsh-tool-present'
           - id: yuike-tool-plugin-manager
             name: '@deepseek-ai/dsh-plugin-manager/tools'
+            disabled: true
+          # 0.2.1 standard 新增，出厂同样默认禁用。disabled 行在 Loader 解析包名之前
+          # 就被过滤（agent-preset-registry mount.ts 的 `if (entry.disabled) continue`），
+          # 因此在没有这个包的宿主上也不会牵连整份预设，无需可用性探测。
+          - id: yuike-tool-plugin-market
+            name: '@deepseek-ai/dsh-plugin-market/tools'
             disabled: true
