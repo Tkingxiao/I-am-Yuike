@@ -202,14 +202,30 @@
             config:
               - id: yuike-tool-subagent-control
                 name: '@deepseek-ai/dsh-tool-subagent-control'
+              # `list_agents` 在 0.2.1 线上是 `…/list-agents` 这个**子路径入口**单独提供的
+              # （主入口只注册 send_message / interrupt_agent）；0.2.2-alpha.2 起子路径被删掉、
+              # 三个工具一起并进了主入口 `dsh-tool-subagent-control` 本身。所以这一条的
+              # `disabled` 同样是能力探测而不是偏好：0.2.2 上主入口已经给了 `list_agents`，
+              # 再声明一次是重复注册；而在早一点的宿主上这行必须启用才找得到这个工具。
+              # 判据用子路径能不能 resolve —— 不能就禁用整行，disabled 行在 Loader 解析包名
+              # 之前就被过滤掉，所以不会连累整份预设（同 time-context / tool-schedule）。
               - id: yuike-tool-subagent-list-agents
                 name: '@deepseek-ai/dsh-tool-subagent-control/list-agents'
+                disabled: !!js (() => { try { process.getBuiltinModule('node:module').createRequire(ctx.baseUrl).resolve('@deepseek-ai/dsh-tool-subagent-control/list-agents'); return false } catch { return true } })()
               - id: yuike-tool-subagent
                 name: '@deepseek-ai/dsh-tool-subagent'
                 config:
                   provider: spawn
                   toolName: subagent
+                  # 同一个开关在 0.2.2-alpha.2 改了名：`modelSelectionSettings` → `modelSelection`
+                  # （语义逐字一致，都是 `z.boolean().default(false)`）。两行一起写：宿主侧
+                  # `Config` 是 `z.object({...})`（非 strict），cordis 的 `resolveConfig` 走
+                  # standard-schema 的 `validate`，不认识的键被**剥掉而不报错**——已在装机目录的
+                  # zod@4.6.7 上实测：两代 schema 对同一份 {modelSelectionSettings, modelSelection}
+                  # 都是 0 issue，各自只留下自己那一个。所以两行写下去，两条线都拿到正确的那把开关，
+                  # 少写一行则在对应宿主上静默失效（子代理选不到模型，不报错）。
                   modelSelectionSettings: true
+                  modelSelection: true
               - id: yuike-tool-subagent-fork
                 name: '@deepseek-ai/dsh-tool-subagent'
                 config:
