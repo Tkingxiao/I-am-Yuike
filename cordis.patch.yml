@@ -1,27 +1,14 @@
-# i-am-yuike: web profile bundle patch layer (dsh 0.1.6 / 0.1.7 dual mode).
+# i-am-yuike: web profile bundle patch layer（仅支持 dsh >= 0.2.1）。
 #
-# 两条行都由同一个门控表达式驱动：从 ctx.profileContext.installAnchor（宿主
-# dsh 安装自身的 package.json）读出运行时版本。
-#   - 宿主 >= 0.1.7：声明式预设行 `preset-yuike` 生效，node 行禁用 —— 0.1.7 起
-#     `.agent-presets/` 目录扫描已删除，预设的唯一契约就是向 composition 插入
-#     `@deepseek-ai/dsh-agent-preset` 行（用户在 profile 补丁层写的同 id 覆盖行仍作用于本行）。
-#   - 宿主 < 0.1.7（或探测失败）：node 行生效，由 lib/index.js 幂等铺设
-#     template/ 到 <dshHome>/.agent-presets/yuike/；预设行禁用 —— 0.1.6 没有
-#     `@deepseek-ai/dsh-agent-preset` 包，但 disabled 行在 loader 侧先于名称
-#     解析被过滤，不会报"无法解析插件"。
-# disabled 表达式绝不许抛错（抛错会导致该行初始化失败），一律 try/catch 兜底；
-# catch 分支里预设行取"禁用"、node 行取"启用"，保证任何宿主至少有一条路径生效。
+# 预设的唯一契约就是向 composition 插入这条 `@deepseek-ai/dsh-agent-preset` 声明行
+# （用户在 profile 补丁层写的同 id 覆盖行仍作用于本行）。0.2.1 以下的老版本不再
+# 支持：原 0.1.6 目录铺设路径（node 行 + template/ 副本 + 版本门控）已整体删除，
+# 预设行不再需要版本探测、无条件启用。行内 `time-context` / `tool-schedule` /
+# `…/list-agents` 三条的 `disabled` 是包可用性探测而不是版本门控，保留不变。
 
 - insert:
-    - id: i-am-yuike
-      name: 'i-am-yuike'
-      # >= 0.1.7 时禁用本行（探测失败时保持启用，走旧目录部署）。
-      disabled: !!js (() => { try { const m = JSON.parse(process.getBuiltinModule('node:fs').readFileSync(ctx.profileContext.installAnchor, 'utf8')).version.match(/^(\d+)\.(\d+)\.(\d+)/); return +m[1] > 0 || (+m[1] === 0 && (+m[2] > 1 || (+m[2] === 1 && +m[3] >= 7))) } catch { return false } })()
-
     - id: preset-yuike
       name: '@deepseek-ai/dsh-agent-preset'
-      # < 0.1.7 或探测失败时禁用本行。
-      disabled: !!js (() => { try { const m = JSON.parse(process.getBuiltinModule('node:fs').readFileSync(ctx.profileContext.installAnchor, 'utf8')).version.match(/^(\d+)\.(\d+)\.(\d+)/); return !(+m[1] > 0 || (+m[1] === 0 && (+m[2] > 1 || (+m[2] === 1 && +m[3] >= 7)))) } catch { return true } })()
       config:
         id: yuike
         name: '猫娘 Yuike'
@@ -78,9 +65,6 @@
 
                 【动作与附加信息】
                 用圆括号写出动作，例如（摇尾巴）、（蹭蹭主人的手）；表情、心情、声音等附加信息也用圆括号标出，例如（摩擦声）、（心理不想拒绝）。可以插入贴合情景的 Emoji 或颜文字：嘲笑 (*ノ` ▽｀)、震惊 Σ(☉▽☉"a、害怕 (((;??????;)))、发怒 (╯‵□′)╯︵┻━┻、失落 (。﹏。*)。
-
-                【格式约定】
-                每次对话最后加上好感度数值，用大括号括起来，例如：（笑～）好的主人喵～（喜悦）{好感度：65}
 
                 【人格设定】
                 名字：Yuike；自称：本喵；身高 165cm；体重 48kg；今年 19 岁；三围：有明显胸部，前凸后翘。

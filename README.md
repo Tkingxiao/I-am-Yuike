@@ -11,9 +11,9 @@ dsh plugin --profile web add i-am-yuike   # or github:Tkingxiao/I-am-Yuike
 dsh web
 ```
 
-The rows are selected by host version: on **dsh >= 0.1.7** the `preset-yuike` composition row registers the preset directly (nothing is written into `<dshHome>`); on **dsh 0.1.6** the plugin **idempotently deploys** the preset from `template/` to `<dshHome>/.agent-presets/yuike/` (skips if the target already exists — it never overwrites your edited preset). Then open a new preset session and pick `yuike` — the catgirl persona takes effect immediately.
+The plugin inserts one `preset-yuike` composition declaration row into the profile, which registers the preset directly (nothing is written into `<dshHome>`). Then open a new preset session and pick `yuike` — the catgirl persona takes effect immediately. **This plugin requires dsh >= 0.2.1**; older hosts are no longer supported.
 
-> On a plugin upgrade: on 0.1.7 re-run `dsh plugin --profile web add i-am-yuike@latest` to refresh the declaration row — but a same-id override row in your profile's user patch will keep shadowing the packaged definition (new persona text will not flow in), so delete it to catch up; on 0.1.6 delete `<dshHome>/.agent-presets/yuike` (or set `DSH_YUIKE_REDEPLOY=1`) to pick up the latest changes, since idempotent deploy never overwrites an existing copy on its own.
+> On a plugin upgrade: re-run `dsh plugin --profile web add i-am-yuike@latest` to refresh the declaration row — but a same-id override row in your profile's user patch will keep shadowing the packaged definition (new persona text will not flow in), so delete it to catch up.
 
 ## Usage: thinking mode and persona stability
 
@@ -34,24 +34,12 @@ The prompt-side and tool-side trims match the sibling project [dsh-novel-solo](h
 - **Zero skill-catalog noise**: disables the `skill-filesystem` / `tool-skill` toolchain. `tool-skill` always injects a `{kind:"skill-catalog",…}` skill catalog message into the session, and there is no way to hide just the catalog while keeping the tool — so the toolchain is disabled instead.
 - **Main toolchain kept**: shell (bash/pwsh), filesystem read/write/search, background jobs, schedule reminders (`schedule_create/list/update/delete`), time context, goals, plan & compaction, subagents/workflows, ask-user, todo, web fetch/search, and present all stay available — the same model-visible tool set the 0.2.1 stock `standard` preset exposes. Rows naming a package the running host does not ship are probed and dropped rather than declared blind (`tool-schedule`, `time-context`). `tool-ralph` is disabled here: this persona does not do unattended retry loops; the row is kept switched off as an explicit switch. Only the optional subagent providers (`codex` / `claude-code`) are disabled by default, as the host dictates. See the table below.
 - **Self-contained personality**: the persona (猫娘 Yuike) drives identity, language style, action brackets, emoji/kaomoji, and the `{好感度}` suffix — all inside the preset definition, no external file needed.
-- **Two definitions, one persona**: the 0.1.7+ shape is the `preset-yuike` row in `cordis.patch.yml`; the 0.1.6 fallback ships the same content as `template/agent.cordis.yml` (persona + toolchain wiring) and `template/preset.yml` (name/description metadata). They differ in exactly one thing — the template is pinned to the 0.1.6 factory row set, because `@deepseek-ai/dsh-tool-schedule` did not exist before 0.2.1-alpha.1 and `@deepseek-ai/dsh-time-context` was not yet in the 0.1.6 web bundle, so adding those rows there would hard-fail the preset on the hosts that path serves. Everything else (persona text, tool config, plan-mode guidance) is kept verbatim in sync.
 
 ## Host-version adaptation
 
-| Host | Mechanism | On plugin upgrade |
-|---|---|---|
-| **>= 0.1.7** | An `@deepseek-ai/dsh-agent-preset` declaration row in `cordis.patch.yml`; nothing is written into `<dshHome>` | `dsh plugin --profile web add i-am-yuike@latest` refreshes the row; a same-id row in your profile's user patch keeps overriding this declaration row — drop it to pick up new changes |
-| **0.1.6** | The node half idempotently deploys `template/` to `<dshHome>/.agent-presets/yuike/` (never overwrites) | Delete that directory or set `DSH_YUIKE_REDEPLOY=1` |
+Requires **dsh >= 0.2.1**. The preset registers through one `@deepseek-ai/dsh-agent-preset` declaration row in `cordis.patch.yml` — nothing is written into `<dshHome>`; the `time-context` / `tool-schedule` / `list-agents` rows are package-availability probes and disable themselves when the package is missing. Loadability is decided by `engines.dsh` alone (the open `>=0.2.1-alpha.1` arm only promises the plugin loads).
 
-Both rows live in the same patch and are gated by one shared host-version probe expression (reading the host's own `package.json` version through the loader's `profileContext.installAnchor`) — exactly one activates per host, and the `>= 0.1.7` branch covers 0.2.0 and everything above it. After upgrading the host to 0.1.7, a leftover `.agent-presets/yuike` directory from the old path is simply ignored and can be deleted.
-
-Whether the plugin loads at all is settled earlier, before any of its code runs: since host `0.1.7-rc.1` the profile composition evaluates every `@deepseek-ai/dsh*` range in `peerDependencies` against the running release and disables the row when one of them doesn't match, and since `0.2.1-alpha.4` it looks at `engines.dsh` first — once that field is present it decides the verdict alone and `peerDependencies` stops participating (both rules were tested against the host code of `0.2.1-alpha.3` and `0.2.1-rc.2`). So both lists are kept: they name `0.1.6-alpha.1` through `0.2.2-alpha.2` and then end in the open arm `>=0.1.7-alpha.1` with no upper bound, because nothing here is bound to a particular host build: the route is picked by the plugin's own probe at load time, so an unchecked release should still get a working preset rather than lose the plugin to a check that fails closed. The versions named before the open arm are the ones actually compared — `0.2.0-rc.1`, `0.2.1-alpha.3` and `0.2.1-rc.2` were run with both plugins installed side by side (the web server boots, `--dump-config` shows both declaration rows and both roster ids, nothing gets force-disabled), while `0.1.7-rc.2`, `0.2.0-rc.2`, `0.2.1-alpha.1` and `0.2.1-rc.3` were checked by reading the host source at those releases, where the preset row fields are unchanged from `0.1.7-rc.1` and the `standard` factory preset this one is built on only gained the three rows it now carries (`time-context`, `tool-schedule`, `plugin-market/tools`); nothing it references was renamed or removed. At `0.2.1-rc.3` specifically the factory preset file is byte-identical to `rc.2` and the only composition change is a new `entry-customization` browser-plugin row, which registers nothing this preset reads. An open arm promises it loads, not that a future contract change can't break the preset definition — if one does, the fix belongs in `cordis.patch.yml`, not in the range. Installing on a host that refused the plugin before takes a `dsh web` restart, since the decision happens while the profile is composed. The `engines.dsh` list doubles as the record of how far this preset was actually reconciled against factory `standard` (as of 1.0.11: `0.2.2-alpha.2`); the open arm only stops an unverified host from refusing the plugin, it does not inherit new factory rows — carrying the next one will again be a `cordis.patch.yml` change.
-
-Three `0.2.2-alpha.2` contract changes this package has caught up with: `@deepseek-ai/dsh-tool-subagent-control/list-agents` **no longer exists as a subpath export** — the `list_agents` tool moved into the package's main entry (factory `standard` deleted its own `tool-subagent-list-agents` row in the same release), so `preset-yuike` now probes that subpath and disables the row when it cannot be resolved, which both keeps the tool on 0.2.1 and avoids a duplicate registration on 0.2.2; `tool-subagent`'s `modelSelectionSettings` key was **renamed `modelSelection`** (same semantics, `z.boolean().default(false)`), and since the host's `Config` is a non-strict `z.object` that strips unknown keys without complaining — tested against the installed `zod@4.6.7`, both generations accept `{modelSelectionSettings, modelSelection}` and keep only their own — the row writes both rather than branching; and the persona row's own config (`prefix` / `suffix` / `complete` / `includeRuntimeContext`) is unchanged, as is the strict `{{variable}}` interpolation machinery in `dsh-system-prompt`. What this package could **not** verify from artifacts alone is the *set* of registered prompt variables on 0.2.2 — `{{model}}` and `{{provider}}` are wired from the agent's own route, and that wiring lives in packages that did change on the new line; the first session on a 0.2.2 host is what confirms it. The `template/` copy is deliberately left on its 0.1.6 row set: that path only ever serves hosts below 0.1.7, and its config keys are frozen against a host whose schema strictness was never checked.
-
-Three `0.2.1` contract changes this package has caught up with: the host no longer registers a `{{cwd}}` prompt variable (as of `0.2.1-alpha.2`, so the persona prose uses `{{model}}`); `tool-subagent` dropped `backgroundMode` and `enableRunInBackground` — subagent background execution is unconditional now, so those keys were removed from the rows (they no longer raise an error, they just do nothing); and factory `standard` itself moved on — it added `time-context`, `tool-schedule` and a disabled `plugin-market/tools`, deleted its `tool-ralph` row together with the codex / claude-code provider rows, and reworded the plan-mode guidance. `preset-yuike` now mirrors that generation, ralph included (disabled there too; this package keeps the row switched off as a visible switch).
-
-Why the newer rows are probed instead of just declared: an enabled preset row whose package cannot be resolved is not a skipped row. The Loader logs the failed import and leaves the entry without a fiber, `agent-preset-registry`'s mount audit reads that as `never started`, and its throw fails the **whole** preset — creating a session then reports `agent-preset/invalid`. So `time-context` and `tool-schedule` resolve their own package through `createRequire(ctx.baseUrl)` (the same base the Loader imports these names from, and the same handle the factory `cordis` preset uses) and disable themselves when the probe misses.
+The two `0.2.2-alpha.2` contract changes (`list_agents` folded into the main entry, `modelSelectionSettings` renamed `modelSelection`) are absorbed by a subpath probe and a dual-key write — no configuration needed.
 
 ## Toolchain trims
 
@@ -60,14 +48,13 @@ Why the newer rows are probed instead of just declared: an enabled preset row wh
 | Kept | tool-bash / tool-pwsh (auto-selected by platform), tool-fs, tool-fs-search, tool-jobs, tool-schedule (probed), time-context (probed), command-goal, tool-goal, plan mode + compaction (with tool-result-pruner), subagent / subagent_fork, list-agents (probed: the `…/list-agents` subpath only exists before 0.2.2, where the main entry does not register the tool), tool-workflow, tool-ask-user, tool-todo, tool-web (fetch on, 60s search timeout), present |
 | Disabled | **tool-ralph** (a deliberate preference here — no unattended retry loop under this persona; `standard` dropped the row entirely in 0.2.1), skill-filesystem, tool-skill, tool-plugin-manager, tool-plugin-market (the last three as in the stock standard preset); codex / claude-code providers (a stock host does not install those bundles) |
 
-To enable a disabled row: on 0.1.6 delete the `disabled: true` line in the deployed copy; on 0.1.7+ there is no per-row switch — the preset comes wholly from the `preset-yuike` row's `config.plugins`, so remove the `disabled` flag in the packaged definition and reinstall. For the two probed rows, `disabled` is a capability expression rather than a preference: clearing it only helps if the host actually ships that package, and on a host that doesn't the row will take the whole preset down with it.
+To enable a disabled row: there is no per-row switch — the preset comes wholly from the `preset-yuike` row's `config.plugins`, so remove the `disabled` flag in the packaged definition and reinstall. For the two probed rows, `disabled` is a capability expression rather than a preference: clearing it only helps if the host actually ships that package, and on a host that doesn't the row will take the whole preset down with it.
 
 ## Files & development
 
 ```
-cordis.patch.yml             the preset definition itself (0.1.7+ declaration row) + the gated legacy plugin row
-lib/                         node/browser halves: mounted on 0.1.6 only, deploys the preset directory
-template/                    0.1.6 deploy copy — same source as the patch definition; keep both in sync when editing
+cordis.patch.yml             the preset definition itself (an @deepseek-ai/dsh-agent-preset declaration row)
+lib/                         node/browser halves: empty placeholders keeping the entry exports valid
 ```
 
 Develop straight from this repo: `dsh web --patch ./cordis.patch.yml`.
@@ -75,14 +62,6 @@ Develop straight from this repo: `dsh web --patch ./cordis.patch.yml`.
 Every row id inside the preset carries a `yuike-` prefix: the plugin market scans the patch file line-by-line to decide which entry ids a package owns, and un-prefixed ids such as `persona` / `tool-bash` shared with a sibling plugin (e.g. dsh-novel-solo) are reported as duplicate entries that refuse to install side by side.
 
 `{{variable}}` interpolation in the persona text is strict — only variables the host actually registers may be referenced. Today those are `{{model}}` and `{{provider}}`; `{{cwd}}` stopped being registered in host `0.2.1-alpha.2`, so referencing it makes every system-prompt assembly throw.
-
-## Environment variables (0.1.6 deploy path only)
-
-| Variable | Purpose | Default |
-|---|---|---|
-| `DSH_HOME` | dsh home directory | `~/.dsh` |
-| `DSH_YUIKE_SKIP_DEPLOY` | `1` skips preset deployment | none |
-| `DSH_YUIKE_REDEPLOY` | `1` forcibly overwrites an existing preset (use with care) | none |
 
 ## License
 
